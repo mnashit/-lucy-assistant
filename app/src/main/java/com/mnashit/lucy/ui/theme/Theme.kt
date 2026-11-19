@@ -6,13 +6,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 private val LucyColorScheme = darkColorScheme(
-    primary = Color(0xFF2196F3),
-    secondary = Color(0xFF00BCD4),
-    background = Color(0xFF080D1A),
-    surface = Color(0xFF101A2C),
+    primary = Color(0xFF168BFF),
     onPrimary = Color.White,
+
+    secondary = Color(0xFF00E5FF),
+    onSecondary = Color(0xFF080D1A),
+
+    background = Color(0xFF080D1A),
     onBackground = Color.White,
-    onSurface = Color.White
+
+    surface = Color(0xFF111D32),
+    onSurface = Color.White,
+
+    surfaceVariant = Color(0xFF172944),
+    onSurfaceVariant = Color(0xFFB0C4D8),
+
+    error = Color(0xFFFF5252),
+    onError = Color.White
 )
 
 @Composable
