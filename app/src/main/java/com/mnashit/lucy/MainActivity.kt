@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -16,8 +17,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -182,25 +186,15 @@ private fun HomeScreen(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Box(
+            Image(
+                painter = painterResource(id = R.drawable.lucy_avatar),
+                contentDescription = "LUCY AI Avatar",
                 modifier = Modifier
-                    .size(145.dp)
-                    .border(2.dp, Blue, CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(Cyan, Color(0xFF1266B5), Navy)
-                        ),
-                        CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    "L",
-                    color = Color.White,
-                    fontSize = 76.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+                    .size(190.dp)
+                    .clip(CircleShape)
+                    .border(2.dp, Blue, CircleShape),
+                contentScale = ContentScale.Crop
+            )
         }
 
         Spacer(Modifier.height(28.dp))
