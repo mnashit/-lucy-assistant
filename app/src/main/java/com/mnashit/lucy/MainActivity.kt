@@ -1,4 +1,3 @@
-
 @Composable
 private fun HomeScreen(
     onChat: () -> Unit,
