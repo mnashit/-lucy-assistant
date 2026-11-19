@@ -2,7 +2,10 @@ package com.mnashit.lucy
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -13,7 +16,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -25,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -38,10 +43,15 @@ private val Cyan = Color(0xFF38DDF8)
 private val Blue = Color(0xFF247BFF)
 private val Muted = Color(0xFF9FB2C8)
 private val White = Color(0xFFFFFFFF)
+private val Danger = Color(0xFFFF6B6B)
 
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(Navy.toArgb()),
+            navigationBarStyle = SystemBarStyle.dark(Navy.toArgb())
+        )
         super.onCreate(savedInstanceState)
 
         val preferences = getSharedPreferences(
@@ -104,6 +114,22 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            fun deleteMessage(index: Int) {
+                if (index in messages.indices) {
+                    messages.removeAt(index)
+                    saveMessages()
+                }
+            }
+
+            fun clearMessages() {
+                messages.clear()
+                saveMessages()
+            }
+
+            BackHandler(enabled = currentScreen != "home") {
+                currentScreen = "home"
+            }
+
             MaterialTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -119,12 +145,14 @@ class MainActivity : ComponentActivity() {
                         "chat" -> ChatScreen(
                             messages = messages,
                             onSendMessage = { sendMessage(it) },
+                            onClearHistory = { clearMessages() },
                             onBack = { currentScreen = "home" }
                         )
 
                         "settings" -> SettingsScreen(
                             notifications = notifications,
                             onlineSearch = onlineSearch,
+                            messageCount = messages.size,
                             onNotificationsChange = {
                                 notifications = it
                                 preferences.edit()
@@ -137,11 +165,15 @@ class MainActivity : ComponentActivity() {
                                     .putBoolean("online_search", it)
                                     .apply()
                             },
+                            onClearHistory = { clearMessages() },
                             onBack = { currentScreen = "home" }
                         )
 
                         "history" -> HistoryScreen(
                             messages = messages,
+                            onDeleteMessage = { deleteMessage(it) },
+                            onClearHistory = { clearMessages() },
+                            onOpenChat = { currentScreen = "chat" },
                             onBack = { currentScreen = "home" }
                         )
                     }
@@ -173,6 +205,8 @@ fun HomeScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Navy)
+            .statusBarsPadding()
+            .navigationBarsPadding()
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
@@ -293,10 +327,23 @@ fun HomeScreen(
 fun ChatScreen(
     messages: List<String>,
     onSendMessage: (String) -> Unit,
+    onClearHistory: () -> Unit,
     onBack: () -> Unit
 ) {
     var input by rememberSaveable {
         mutableStateOf("")
+    }
+
+    var showClearDialog by remember {
+        mutableStateOf(false)
+    }
+
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) {
+            listState.animateScrollToItem(messages.size - 1)
+        }
     }
 
     fun sendCurrentMessage() {
@@ -306,10 +353,23 @@ fun ChatScreen(
         }
     }
 
+    if (showClearDialog) {
+        ConfirmClearDialog(
+            onConfirm = {
+                onClearHistory()
+                showClearDialog = false
+            },
+            onDismiss = { showClearDialog = false }
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Navy)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .imePadding()
             .padding(16.dp)
     ) {
         Row(
@@ -328,11 +388,20 @@ fun ChatScreen(
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold
             )
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            if (messages.isNotEmpty()) {
+                TextButton(onClick = { showClearDialog = true }) {
+                    Text("Clear", color = Danger)
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth(),
@@ -348,7 +417,7 @@ fun ChatScreen(
                 }
             }
 
-            items(messages) { message ->
+            itemsIndexed(messages) { _, message ->
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -413,12 +482,31 @@ fun ChatScreen(
 @Composable
 fun HistoryScreen(
     messages: List<String>,
+    onDeleteMessage: (Int) -> Unit,
+    onClearHistory: () -> Unit,
+    onOpenChat: () -> Unit,
     onBack: () -> Unit
 ) {
+    var showClearDialog by remember {
+        mutableStateOf(false)
+    }
+
+    if (showClearDialog) {
+        ConfirmClearDialog(
+            onConfirm = {
+                onClearHistory()
+                showClearDialog = false
+            },
+            onDismiss = { showClearDialog = false }
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Navy)
+            .statusBarsPadding()
+            .navigationBarsPadding()
             .padding(20.dp)
     ) {
         TextButton(onClick = onBack) {
@@ -432,6 +520,46 @@ fun HistoryScreen(
             fontWeight = FontWeight.Bold
         )
 
+        Text(
+            text = if (messages.size == 1) {
+                "1 saved message"
+            } else {
+                "${messages.size} saved messages"
+            },
+            color = Muted,
+            fontSize = 13.sp
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Button(
+                onClick = onOpenChat,
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Blue
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Open Chat")
+            }
+
+            OutlinedButton(
+                onClick = { showClearDialog = true },
+                enabled = messages.isNotEmpty(),
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Danger
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Clear All")
+            }
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         if (messages.isEmpty()) {
@@ -441,12 +569,13 @@ fun HistoryScreen(
             )
         } else {
             LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(messages) { message ->
-                    Text(
-                        text = message,
-                        color = White,
+                itemsIndexed(messages) { index, message ->
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(
@@ -454,7 +583,27 @@ fun HistoryScreen(
                                 RoundedCornerShape(12.dp)
                             )
                             .padding(14.dp)
-                    )
+                    ) {
+                        Text(
+                            text = message,
+                            color = White
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            TextButton(
+                                onClick = { onDeleteMessage(index) }
+                            ) {
+                                Text(
+                                    "Delete",
+                                    color = Danger,
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -465,14 +614,32 @@ fun HistoryScreen(
 fun SettingsScreen(
     notifications: Boolean,
     onlineSearch: Boolean,
+    messageCount: Int,
     onNotificationsChange: (Boolean) -> Unit,
     onOnlineSearchChange: (Boolean) -> Unit,
+    onClearHistory: () -> Unit,
     onBack: () -> Unit
 ) {
+    var showClearDialog by remember {
+        mutableStateOf(false)
+    }
+
+    if (showClearDialog) {
+        ConfirmClearDialog(
+            onConfirm = {
+                onClearHistory()
+                showClearDialog = false
+            },
+            onDismiss = { showClearDialog = false }
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Navy)
+            .statusBarsPadding()
+            .navigationBarsPadding()
             .padding(20.dp)
     ) {
         TextButton(onClick = onBack) {
@@ -504,52 +671,7 @@ fun SettingsScreen(
             onCheckedChange = onOnlineSearchChange
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        Text(
-            text = "More assistant settings will be added in later phases.",
-            color = Muted,
-            fontSize = 13.sp
-        )
-    }
-}
-
-@Composable
-fun SettingItem(
-    title: String,
-    description: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                Panel,
-                RoundedCornerShape(14.dp)
-            )
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            Text(
-                text = title,
-                color = White,
-                fontWeight = FontWeight.Bold
-            )
-
-            Text(
-                text = description,
-                color = Muted,
-                fontSize = 12.sp
-            )
-        }
-
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange
-        )
-    }
-}
+        OutlinedButton(
+            onClick = { showClearDialog = true },
