@@ -3,67 +3,73 @@ package com.mnashit.lucy
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 private val Navy = Color(0xFF071426)
 private val Panel = Color(0xFF10243D)
-private val Cyan = Color(0xFF42DDF5)
-private val Blue = Color(0xFF1677D2)
-private val Muted = Color(0xFF9BAEC4)
+private val Cyan = Color(0xFF38DDF8)
+private val Blue = Color(0xFF247BFF)
+private val Muted = Color(0xFF9FB2C8)
+private val White = Color(0xFFFFFFFF)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
-            var screen by remember { mutableStateOf("home") }
+            var currentScreen by rememberSaveable { mutableStateOf("home") }
+            val messages = remember { mutableStateListOf<String>() }
 
             MaterialTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = Navy
                 ) {
-                    when (screen) {
+                    when (currentScreen) {
                         "home" -> HomeScreen(
-                            onChat = { screen = "chat" },
-                            onSettings = { screen = "settings" },
-                            onHistory = { screen = "history" }
+                            onChat = { currentScreen = "chat" },
+                            onSettings = { currentScreen = "settings" },
+                            onHistory = { currentScreen = "history" }
                         )
 
-                        "chat" -> SimpleScreen(
-                            title = "LUCY CHAT",
-                            message = "Chat screen",
-                            onBack = { screen = "home" }
+                        "chat" -> ChatScreen(
+                            messages = messages,
+                            onBack = { currentScreen = "home" }
                         )
 
-                        "settings" -> SimpleScreen(
-                            title = "SETTINGS",
-                            message = "LUCY Settings",
-                            onBack = { screen = "home" }
+                        "settings" -> SettingsScreen(
+                            onBack = { currentScreen = "home" }
                         )
 
-                        "history" -> SimpleScreen(
-                            title = "CONVERSATION HISTORY",
-                            message = "Your conversations will appear here.",
-                            onBack = { screen = "home" }
+                        "history" -> HistoryScreen(
+                            messages = messages,
+                            onBack = { currentScreen = "home" }
                         )
                     }
                 }
@@ -73,180 +79,401 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun HomeScreen(
+fun HomeScreen(
     onChat: () -> Unit,
     onSettings: () -> Unit,
     onHistory: () -> Unit
 ) {
-    val infinite = rememberInfiniteTransition(label = "avatarGlow")
-
-    val glowAlpha by infinite.animateFloat(
-        initialValue = 0.35f,
-        targetValue = 1f,
+    val transition = rememberInfiniteTransition(label = "lucyRing")
+    val pulse by transition.animateFloat(
+        initialValue = 0.94f,
+        targetValue = 1.08f,
         animationSpec = infiniteRepeatable(
             animation = tween(1200),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "glowAlpha"
-    )
-
-    val ringSize by infinite.animateFloat(
-        initialValue = 210f,
-        targetValue = 224f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "ringSize"
+        label = "pulse"
     )
 
     Column(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .fillMaxSize()
+            .background(Navy)
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Spacer(Modifier.height(28.dp))
-
-        Text(
-            "YOUR PERSONAL AI",
-            color = Muted,
-            fontSize = 12.sp
-        )
-
-        Spacer(Modifier.height(25.dp))
-
-        Box(
-            modifier = Modifier.size(230.dp),
-            contentAlignment = Alignment.Center
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
-                modifier = Modifier
-                    .size(ringSize.dp)
-                    .border(
-                        3.dp,
-                        Cyan.copy(alpha = glowAlpha),
-                        CircleShape
-                    )
-                    .background(
-                        Brush.radialGradient(
-                            listOf(
-                                Color(0xFF1765A0).copy(alpha = 0.35f),
-                                Panel,
-                                Navy
-                            )
-                        ),
-                        CircleShape
-                    )
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Text(
+                text = "LUCY",
+                color = Cyan,
+                fontSize = 34.sp,
+                fontWeight = FontWeight.Bold
             )
 
-            Image(
-                painter = painterResource(
-                    id = R.drawable.lucy_avatar
-                ),
-                contentDescription = "LUCY AI Avatar",
-                modifier = Modifier
-                    .size(190.dp)
-                    .clip(CircleShape)
-                    .border(
-                        2.dp,
-                        Blue.copy(alpha = glowAlpha),
-                        CircleShape
-                    ),
-                contentScale = ContentScale.Crop
+            Text(
+                text = "YOUR PERSONAL AI ASSISTANT",
+                color = Muted,
+                fontSize = 12.sp,
+                letterSpacing = 2.sp
             )
         }
 
-        Spacer(Modifier.height(28.dp))
-
-        Text(
-            "HELLO BOSS!",
-            color = Color.White,
-            fontSize = 27.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        Text(
-            "Your intelligent assistant is waiting",
-            color = Muted,
-            fontSize = 13.sp
-        )
-
-        Spacer(Modifier.height(30.dp))
-
-        Button(
-            onClick = onChat,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(54.dp),
-            shape = RoundedCornerShape(30.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Blue
-            )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Box(
+                modifier = Modifier
+                    .size(230.dp)
+                    .scale(pulse)
+                    .border(3.dp, Cyan, CircleShape)
+                    .padding(12.dp)
+                    .border(2.dp, Blue, CircleShape)
+                    .padding(10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.lucy_avatar),
+                    contentDescription = "LUCY Avatar",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Panel, CircleShape)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
             Text(
-                "START CHATTING",
+                text = "Hello! I'm LUCY",
+                color = White,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                text = "Your assistant is ready",
+                color = Muted,
+                fontSize = 14.sp
+            )
+        }
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Button(
+                onClick = onChat,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Blue
+                ),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Text("Open Chat", fontSize = 16.sp)
+            }
+
+            OutlinedButton(
+                onClick = onHistory,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Cyan
+                ),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Text("Chat History", fontSize = 16.sp)
+            }
+
+            OutlinedButton(
+                onClick = onSettings,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Cyan
+                ),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Text("Settings", fontSize = 16.sp)
+            }
+        }
+
+        Text(
+            text = "LUCY • Your Personal Assistant",
+            color = Muted,
+            fontSize = 11.sp
+        )
+    }
+}
+
+@Composable
+fun ChatScreen(
+    messages: List<String>,
+    onBack: () -> Unit
+) {
+    var input by rememberSaveable { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Navy)
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(onClick = onBack) {
+                Text("← Back", color = Cyan)
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Text(
+                text = "LUCY Chat",
+                color = White,
+                fontSize = 22.sp,
                 fontWeight = FontWeight.Bold
             )
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        OutlinedButton(
-            onClick = onHistory,
-            modifier = Modifier.fillMaxWidth()
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text(
-                "CONVERSATION HISTORY",
-                color = Cyan
-            )
+            if (messages.isEmpty()) {
+                item {
+                    Text(
+                        text = "Your conversation will appear here.",
+                        color = Muted,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+            }
+
+            items(messages) { message ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Panel,
+                            RoundedCornerShape(14.dp)
+                        )
+                        .padding(14.dp)
+                ) {
+                    Text(
+                        text = message,
+                        color = White,
+                        fontSize = 15.sp
+                    )
+                }
+            }
         }
 
-        TextButton(onClick = onSettings) {
-            Text(
-                "OPEN SETTINGS",
-                color = Muted
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = input,
+                onValueChange = { input = it },
+                modifier = Modifier.weight(1f),
+                placeholder = {
+                    Text("Type a message...", color = Muted)
+                },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = White,
+                    unfocusedTextColor = White,
+                    focusedBorderColor = Cyan,
+                    unfocusedBorderColor = Muted,
+                    cursorColor = Cyan
+                ),
+                shape = RoundedCornerShape(14.dp),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    imeAction = ImeAction.Send
+                ),
+                keyboardActions = KeyboardActions(
+                    onSend = {
+                        if (input.isNotBlank()) {
+                            messages.toMutableList()
+                            input = ""
+                        }
+                    }
+                )
             )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Button(
+                onClick = {
+                    if (input.isNotBlank()) {
+                        (messages as? MutableList<String>)?.add(input.trim())
+                        input = ""
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Blue
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Send")
+            }
         }
     }
 }
 
 @Composable
-private fun SimpleScreen(
-    title: String,
-    message: String,
+fun HistoryScreen(
+    messages: List<String>,
     onBack: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Navy)
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(20.dp)
     ) {
-        Spacer(Modifier.height(40.dp))
+        TextButton(onClick = onBack) {
+            Text("← Back", color = Cyan)
+        }
 
         Text(
-            title,
-            color = Cyan,
-            fontSize = 22.sp,
+            text = "Chat History",
+            color = White,
+            fontSize = 26.sp,
             fontWeight = FontWeight.Bold
         )
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (messages.isEmpty()) {
+            Text(
+                text = "No chat messages yet.",
+                color = Muted
+            )
+        } else {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(messages) { message ->
+                    Text(
+                        text = message,
+                        color = White,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                Panel,
+                                RoundedCornerShape(12.dp)
+                            )
+                            .padding(14.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SettingsScreen(onBack: () -> Unit) {
+    var notifications by rememberSaveable {
+        mutableStateOf(true)
+    }
+
+    var onlineSearch by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Navy)
+            .padding(20.dp)
+    ) {
+        TextButton(onClick = onBack) {
+            Text("← Back", color = Cyan)
+        }
 
         Text(
-            message,
-            color = Color.White,
-            fontSize = 16.sp
+            text = "Settings",
+            color = White,
+            fontSize = 26.sp,
+            fontWeight = FontWeight.Bold
         )
 
-        Spacer(Modifier.height(30.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-        Button(onClick = onBack) {
-            Text("BACK TO HOME")
+        SettingItem(
+            title = "Notifications",
+            description = "Notification preference",
+            checked = notifications,
+            onCheckedChange = { notifications = it }
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        SettingItem(
+            title = "Online Search",
+            description = "Online search preference",
+            checked = onlineSearch,
+            onCheckedChange = { onlineSearch = it }
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text(
+            text = "More assistant settings will be added in later phases.",
+            color = Muted,
+            fontSize = 13.sp
+        )
+    }
+}
+
+@Composable
+fun SettingItem(
+    title: String,
+    description: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Panel,
+                RoundedCornerShape(14.dp)
+            )
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = White,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                text = description,
+                color = Muted,
+                fontSize = 12.sp
+            )
         }
+
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange
+        )
     }
 }
