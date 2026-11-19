@@ -1,6 +1,7 @@
 package com.mnashit.lucy
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -11,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,6 +32,8 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun LucyHomeScreen() {
+    val context = LocalContext.current
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = Color(0xFF080D1A)
@@ -95,7 +99,13 @@ fun LucyHomeScreen() {
             Spacer(modifier = Modifier.height(35.dp))
 
             Button(
-                onClick = { },
+                onClick = {
+                    Toast.makeText(
+                        context,
+                        "Lucy Activated Successfully",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF2196F3)
                 )
