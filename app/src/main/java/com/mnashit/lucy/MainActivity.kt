@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.json.JSONArray
 
 private val Navy = Color(0xFF071426)
 private val Panel = Color(0xFF10243D)
@@ -39,12 +40,69 @@ private val Muted = Color(0xFF9FB2C8)
 private val White = Color(0xFFFFFFFF)
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val preferences = getSharedPreferences(
+            "lucy_preferences",
+            MODE_PRIVATE
+        )
+
         setContent {
-            var currentScreen by rememberSaveable { mutableStateOf("home") }
-            val messages = remember { mutableStateListOf<String>() }
+            var currentScreen by rememberSaveable {
+                mutableStateOf("home")
+            }
+
+            val messages = remember {
+                mutableStateListOf<String>().apply {
+                    val saved = preferences.getString(
+                        "chat_history",
+                        null
+                    )
+
+                    if (saved != null) {
+                        try {
+                            val array = JSONArray(saved)
+                            for (i in 0 until array.length()) {
+                                add(array.getString(i))
+                            }
+                        } catch (_: Exception) {
+                            clear()
+                        }
+                    }
+                }
+            }
+
+            var notifications by rememberSaveable {
+                mutableStateOf(
+                    preferences.getBoolean("notifications", true)
+                )
+            }
+
+            var onlineSearch by rememberSaveable {
+                mutableStateOf(
+                    preferences.getBoolean("online_search", false)
+                )
+            }
+
+            fun saveMessages() {
+                val array = JSONArray()
+                messages.forEach { array.put(it) }
+
+                preferences.edit()
+                    .putString("chat_history", array.toString())
+                    .apply()
+            }
+
+            fun sendMessage(message: String) {
+                val cleaned = message.trim()
+
+                if (cleaned.isNotEmpty()) {
+                    messages.add(cleaned)
+                    saveMessages()
+                }
+            }
 
             MaterialTheme {
                 Surface(
@@ -60,10 +118,25 @@ class MainActivity : ComponentActivity() {
 
                         "chat" -> ChatScreen(
                             messages = messages,
+                            onSendMessage = { sendMessage(it) },
                             onBack = { currentScreen = "home" }
                         )
 
                         "settings" -> SettingsScreen(
+                            notifications = notifications,
+                            onlineSearch = onlineSearch,
+                            onNotificationsChange = {
+                                notifications = it
+                                preferences.edit()
+                                    .putBoolean("notifications", it)
+                                    .apply()
+                            },
+                            onOnlineSearchChange = {
+                                onlineSearch = it
+                                preferences.edit()
+                                    .putBoolean("online_search", it)
+                                    .apply()
+                            },
                             onBack = { currentScreen = "home" }
                         )
 
@@ -85,6 +158,7 @@ fun HomeScreen(
     onHistory: () -> Unit
 ) {
     val transition = rememberInfiniteTransition(label = "lucyRing")
+
     val pulse by transition.animateFloat(
         initialValue = 0.94f,
         targetValue = 1.08f,
@@ -137,7 +211,9 @@ fun HomeScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.lucy_avatar),
+                    painter = painterResource(
+                        id = R.drawable.lucy_avatar
+                    ),
                     contentDescription = "LUCY Avatar",
                     modifier = Modifier
                         .fillMaxSize()
@@ -216,9 +292,19 @@ fun HomeScreen(
 @Composable
 fun ChatScreen(
     messages: List<String>,
+    onSendMessage: (String) -> Unit,
     onBack: () -> Unit
 ) {
-    var input by rememberSaveable { mutableStateOf("") }
+    var input by rememberSaveable {
+        mutableStateOf("")
+    }
+
+    fun sendCurrentMessage() {
+        if (input.isNotBlank()) {
+            onSendMessage(input)
+            input = ""
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -305,24 +391,14 @@ fun ChatScreen(
                     imeAction = ImeAction.Send
                 ),
                 keyboardActions = KeyboardActions(
-                    onSend = {
-                        if (input.isNotBlank()) {
-                            messages.toMutableList()
-                            input = ""
-                        }
-                    }
+                    onSend = { sendCurrentMessage() }
                 )
             )
 
             Spacer(modifier = Modifier.width(8.dp))
 
             Button(
-                onClick = {
-                    if (input.isNotBlank()) {
-                        (messages as? MutableList<String>)?.add(input.trim())
-                        input = ""
-                    }
-                },
+                onClick = { sendCurrentMessage() },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Blue
                 ),
@@ -386,15 +462,13 @@ fun HistoryScreen(
 }
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit) {
-    var notifications by rememberSaveable {
-        mutableStateOf(true)
-    }
-
-    var onlineSearch by rememberSaveable {
-        mutableStateOf(false)
-    }
-
+fun SettingsScreen(
+    notifications: Boolean,
+    onlineSearch: Boolean,
+    onNotificationsChange: (Boolean) -> Unit,
+    onOnlineSearchChange: (Boolean) -> Unit,
+    onBack: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -418,7 +492,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             title = "Notifications",
             description = "Notification preference",
             checked = notifications,
-            onCheckedChange = { notifications = it }
+            onCheckedChange = onNotificationsChange
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -427,7 +501,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             title = "Online Search",
             description = "Online search preference",
             checked = onlineSearch,
-            onCheckedChange = { onlineSearch = it }
+            onCheckedChange = onOnlineSearchChange
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -457,7 +531,9 @@ fun SettingItem(
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
             Text(
                 text = title,
                 color = White,
